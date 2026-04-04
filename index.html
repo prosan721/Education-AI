@@ -274,6 +274,7 @@ window.onload = async function() {
 };
 
 /* ── Multi-Model API Caller ── */
+/* ── Multi-Model API Caller ── */
 async function callAPI(model, prompt) {
   const keys = {
     Gemini: localStorage.getItem('key_gemini'),
@@ -285,7 +286,8 @@ async function callAPI(model, prompt) {
 
   if (model === 'Gemini') {
       const msgs = [...history, { role:'user', parts:[{text:prompt}] }];
-      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${keys.Gemini}`, {
+      // Updated to latest Gemini Flash model
+      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${keys.Gemini}`, {
         method:'POST', headers:{'Content-Type':'application/json'},
         body: JSON.stringify({ contents: msgs, generationConfig:{maxOutputTokens:1024} })
       });
@@ -294,9 +296,10 @@ async function callAPI(model, prompt) {
       return d.candidates[0].content.parts[0].text;
   } 
   else if (model === 'Groq') {
+      // Updated to latest Groq Llama 3.1 model
       const r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
           method: "POST", headers: { "Authorization": `Bearer ${keys.Groq}`, "Content-Type": "application/json" },
-          body: JSON.stringify({ model: "llama3-8b-8192", messages: [{ role: "user", content: prompt }] })
+          body: JSON.stringify({ model: "llama-3.1-8b-instant", messages: [{ role: "user", content: prompt }] })
       });
       const d = await r.json();
       if(d.error) throw new Error(d.error.message);
@@ -312,7 +315,8 @@ async function callAPI(model, prompt) {
       return d.choices[0].message.content;
   }
 }
-
+  
+      
 /* ── Normal Chat ── */
 window.sendMsg = async function() {
   const inp = document.getElementById('chatInput');
