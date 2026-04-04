@@ -212,6 +212,13 @@ html,body { height:100%; font-family:'Outfit',sans-serif; background:#e0d8f5; ov
 
 </div>
 <script type="module">
+  /* ── Timer Logic ── */
+let sec = 0;
+setInterval(() => {
+    sec++;
+    let m = Math.floor(sec/60); let s = sec%60;
+    document.getElementById('timerDisplay').innerText = (m<10?'0'+m:m)+':'+(s<10?'0'+s:s);
+}, 1000);
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getFirestore, collection, addDoc, getDocs, query, orderBy, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
