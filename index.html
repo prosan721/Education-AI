@@ -16,8 +16,8 @@
     /* Default (Light Mode) */
     :root {
         --primary: #8a2be2; 
-        --primary-light: #e8dbf7; /* Slightly darker than very light purple */
-        --app-bg: #f5f3f9;        /* Slightly darker than white/pink */
+        --primary-light: #e8dbf7; 
+        --app-bg: #f5f3f9;        
         --header-text: #5a189a;
         --text-main: #222222;
         --text-dim: #555555;
@@ -102,14 +102,9 @@
     .settings-icon:hover { transform: rotate(45deg); }
 
     /* --- View Management --- */
-    ..app-view { 
-    display: none; 
-    flex-direction: column; 
-    flex-grow: 1; 
-    overflow: hidden; /* এখানে overflow-y: auto; পরিবর্তন করে hidden করা হয়েছে */
-    position: relative; 
-    }
-    
+    .app-view { display: none; flex-direction: column; flex-grow: 1; overflow: hidden; position: relative; }
+    .app-view.active { display: flex; animation: fadeIn 0.3s ease-in-out; }
+
     /* --- Chat Body Area --- */
     .chat-area { padding: 20px; flex-grow: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 20px; scroll-behavior: smooth; }
     .message { max-width: 85%; padding: 14px 18px; border-radius: 20px; font-size: 15px; line-height: 1.5; position: relative; white-space: pre-wrap; word-wrap: break-word;}
@@ -222,7 +217,6 @@
 </head>
 <body class="theme-gemini">
     
-<!-- Inject SVGs globally for easy reuse -->
 <svg style="display:none;">
     <symbol id="icon-gemini" viewBox="0 0 24 24">
         <path d="M12 2l2.4 7.6L22 12l-7.6 2.4L12 22l-2.4-7.6L2 12l7.6-2.4L12 2z"></path>
@@ -247,7 +241,6 @@
         </ul>
     </div>
 
-    <!-- Settings Overlay -->
     <div class="settings-modal-overlay" id="settingsOverlay">
         <div class="settings-modal">
             <h3>⚙️ App Settings</h3>
@@ -298,7 +291,6 @@
         </div>
     </div>
 
-    <!-- VIEW 1: CHAT AREA -->
     <div id="viewChat" class="app-view active">
         <div class="chat-area" id="chatArea">
             <div class="message msg-ai">
@@ -355,7 +347,6 @@
     </div>
 
 
-    <!-- VIEW 2: NOTEBOOK LM -->
     <div id="viewNotebookInput" class="app-view">
         <div class="notebook-container">
             <h2 style="margin:0; color:var(--text-main);">Notebook LM</h2>
@@ -379,7 +370,6 @@
         </div>
     </div>
 
-    <!-- VIEW 3: NOTEBOOK LM EXPORT -->
     <div id="viewNotebookExport" class="app-view slides-viewer">
         <div style="background: var(--surface); padding: 15px 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); z-index: 10; border-bottom: 1px solid var(--surface-border);">
             <div class="slides-viewer-header">
@@ -395,7 +385,6 @@
 </div>
 
 <div id="hiddenPdfEngine" style="position: absolute; left: -9999px; top: 0; opacity: 0; background: white;"></div>
-
 <script>
     // Adjust Icon for toggle on load
     document.addEventListener("DOMContentLoaded", () => {
