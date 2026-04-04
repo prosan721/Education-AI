@@ -217,12 +217,8 @@
     </div>
 </div>
 <script>
-    // Default API Keys
-    const apiKeys = {
-        gemini: "AIzaSyCsk7pElw57WidoY2aYY4vjDjek6_LB5-M",
-        groq: "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",
-        openrouter: "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"
-    };
+    // API Keys — Settings এ নিজে বসাও (☰ → Settings)
+    const apiKeys = { gemini: "", groq: "", openrouter: "" };
 
     let currentModel = 'Gemini';
 
@@ -239,6 +235,10 @@
         document.getElementById('key_gemini').value = localStorage.getItem('key_gemini') || apiKeys.gemini;
         document.getElementById('key_groq').value = localStorage.getItem('key_groq') || apiKeys.groq;
         document.getElementById('key_openrouter').value = localStorage.getItem('key_openrouter') || apiKeys.openrouter;
+        // যদি কোনো key না থাকে তাহলে Settings auto open
+        if (!localStorage.getItem('key_gemini') && !localStorage.getItem('key_groq')) {
+            setTimeout(() => openSettingsModal(), 800);
+        }
     };
 
     // UI Functions
@@ -321,7 +321,7 @@
         try {
             const res = await callAPI(currentModel, text);
             loading.innerHTML = `<span class="ai-badge">${currentModel}</span>${res.replace(/\n/g, '<br>')}`;
-        } catch(e) { loading.innerText = "Error: Please check API keys."; }
+        } catch(e) { loading.innerHTML = `<span class="ai-badge" style="color:red">Error</span>☰ Menu → Settings → API Key বসাও তারপর আবার চেষ্টা করো।`; }
     }
 
     async function generateDeepSummary() {
