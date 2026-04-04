@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Education AI</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+<script>
+    // Initialize Theme immediately to prevent flash
+    const savedTheme = localStorage.getItem('eduAiTheme');
+    if(savedTheme === 'dark') { document.documentElement.setAttribute('data-theme', 'dark'); }
+</script>
+
+<style>
+    /* Default (Light Mode) */
+    :root {
+        --primary: #8a2be2; 
+        --primary-light: #e8dbf7; /* Slightly darker than very light purple */
+        --app-bg: #f5f3f9;        /* Slightly darker than white/pink */
+        --header-text: #5a189a;
+        --text-main: #222222;
+        --text-dim: #555555;
+        --surface: #ffffff;
+        --surface-border: #e2e2e2;
+        --outer-bg: #d4dbe0;
+    }
+
+    .theme-chatgpt {
+        --primary: #10a37f;
+        --primary-light: #dcedeb; 
+        --app-bg: #eff6f4;
+        --header-text: #0b755a;
+    }
+
+    .theme-claude {
+        --primary: #d97757;
+        --primary-light: #f7e0d8; 
+        --app-bg: #fcf4f2;
+        --header-text: #b05133;
+    }
+
+    /* Dark Mode Override */
+    [data-theme='dark'] {
+        --primary: #a855f7; 
+        --primary-light: #2c1a40;
+        --app-bg: #0b0f19;
+        --header-text: #f1f5f9;
+        --text-main: #f8fafc;
+        --text-dim: #94a3b8;
+        --surface: #1e293b;
+        --surface-border: #334155;
+        --outer-bg: #030712;
+    }
+
+    [data-theme='dark'].theme-chatgpt {
+        --primary: #10b981;
+        --primary-light: #06402b;
+        --app-bg: #0f1714;
+        --header-text: #f1f5f9;
+        --surface: #142820;
+        --surface-border: #214336;
+    }
+
+    [data-theme='dark'].theme-claude {
+        --primary: #f97316;
+        --primary-light: #4c2509;
+        --app-bg: #1a100c;
+        --header-text: #f1f5f9;
+        --surface: #261611;
+        --surface-border: #3d231b;
+    }
+
+    /* Global Layout */
+    body { 
+        font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        margin: 0; padding: 0; height: 100vh; width: 100vw;
+        background: var(--outer-bg); color: var(--text-main);
+        transition: background-color 0.4s ease; overflow: hidden;
+    }
+
+    .phone-container { 
+        width: 100%; height: 100%; position: relative; 
+        display: flex; flex-direction: column; 
+        background: var(--app-bg);
+    }
+
+    /* --- Headers --- */
+    .header { 
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 15px 20px; background: var(--surface);
+        border-bottom: 1px solid var(--surface-border); z-index: 10;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.02);
+    }
+    .hamburger-icon { font-size: 24px; cursor: pointer; background: none; border: none; color: var(--primary); padding: 0; }
+    .subject-title { font-weight: 700; font-size: 18px; color: var(--header-text); }
+    .header-right { display: flex; align-items: center; gap: 15px; }
+    .theme-toggle { font-size: 18px; cursor: pointer; background: none; border: none; padding: 0; color: var(--header-text); transition: transform 0.3s ease; }
+    .theme-toggle:hover { transform: scale(1.1); }
+    .session-timer { font-size: 12px; font-weight: 600; color: var(--primary); background: var(--primary-light); padding: 4px 10px; border-radius: 15px; }
+    .settings-icon { font-size: 22px; cursor: pointer; background: none; border: none; padding: 0; color: var(--header-text); transition: transform 0.3s ease; }
+    .settings-icon:hover { transform: rotate(45deg); }
+
+    /* --- View Management --- */
+    .app-view { display: none; flex-direction: column; flex-grow: 1; overflow-y: auto; position: relative; }
+    .app-view.active { display: flex; animation: fadeIn 0.3s ease-in-out; }
+
+    /* --- Chat Body Area --- */
+    .chat-area { padding: 20px; flex-grow: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 20px; scroll-behavior: smooth; }
+    .message { max-width: 85%; padding: 14px 18px; border-radius: 20px; font-size: 15px; line-height: 1.5; position: relative; white-space: pre-wrap; word-wrap: break-word;}
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    
+    .msg-user { 
+        background: var(--surface); color: var(--text-main); align-self: flex-end; 
+        border-bottom-right-radius: 4px; border: 1px solid var(--surface-border); box-shadow: 0 4px 15px rgba(0,0,0,0.05); 
+    }
+    .msg-ai { 
+        background: var(--primary-light); color: var(--text-main); align-self: flex-start; 
+        border-bottom-left-radius: 4px; box-shadow: 0 4px 15px rgba(0,0,0,0.02);
+    }
+    
+    .ai-badge { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: bold; color: var(--primary); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .ai-badge svg { width: 14px; height: 14px; fill: currentColor; }
+
+    .typing-indicator { display: flex; align-items: center; gap: 4px; padding: 4px 2px; }
+    .typing-indicator span { width: 6px; height: 6px; background: var(--primary); border-radius: 50%; animation: bounce 1.4s infinite ease-in-out both; }
+    .typing-indicator span:nth-child(1) { animation-delay: -0.32s; }
+    .typing-indicator span:nth-child(2) { animation-delay: -0.16s; }
+    @keyframes bounce { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1); } }
+
+    /* Multi-model Retry Action Bar */
+    .retry-bar { display: flex; align-items: center; gap: 10px; margin-top: 5px; padding-left: 2px; }
+    .retry-label { font-size: 11px; color: var(--text-dim); }
+    .retry-btn { 
+        background: var(--surface); border: 1px solid var(--surface-border); border-radius: 50%; width: 28px; height: 28px; 
+        display: flex; justify-content: center; align-items: center; cursor: pointer; transition: 0.2s; color: var(--text-main);
+    }
+    .retry-btn:hover { background: var(--primary-light); border-color: var(--primary); color: var(--primary); transform: scale(1.1); }
+    .retry-btn svg { width: 14px; height: 14px; fill: currentColor;}
+
+    /* --- Bottom Input Section --- */
+    .bottom-section { background: var(--surface); border-top: 1px solid var(--surface-border); padding: 15px; position: relative; z-index: 20; }
+    .input-wrapper { display: flex; border: 1px solid var(--surface-border); border-radius: 25px; background: var(--app-bg); padding: 8px 15px; align-items: center; margin-bottom: 15px; transition: 0.3s; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02); }
+    .input-wrapper:focus-within { border-color: var(--primary); box-shadow: 0 0 0 2px var(--primary-light); background: var(--surface); }
+    .input-wrapper input { flex-grow: 1; border: none; outline: none; background: transparent; color: var(--text-main); font-size: 15px; }
+    .input-wrapper input::placeholder { color: var(--text-dim); }
+    
+    .ai-select-btn { background: var(--surface); border: 1px solid var(--surface-border); border-radius: 20px; padding: 6px 12px; font-size: 12px; cursor: pointer; color: var(--primary); font-weight: bold; transition: 0.3s; display: flex; align-items: center; gap: 5px; }
+    .send-btn { background: var(--primary); color: white; border: none; border-radius: 50%; width: 34px; height: 34px; display: none; justify-content: center; align-items: center; cursor: pointer; margin-left: 8px; font-size: 14px; }
+    
+    /* Dropdown Menus */
+    .model-dropdown { 
+        position: absolute; bottom: 135px; right: 15px; background: var(--surface); border: 1px solid var(--surface-border); 
+        border-radius: 16px; box-shadow: 0 10px 40px rgba(0,0,0,0.1); display: none; flex-direction: column; width: 220px; overflow: hidden; 
+    }
+    .model-dropdown.show { display: flex; animation: slideUp 0.2s ease; }
+    .model-dropdown button { padding: 14px 18px; border: none; background: none; text-align: left; cursor: pointer; border-bottom: 1px solid var(--surface-border); font-weight: 600; font-size: 14px; color: var(--text-main); display: flex; align-items: center; gap: 10px; transition: background 0.2s; }
+    .model-dropdown button:hover { background: var(--app-bg); }
+    .model-dropdown button svg { width: 18px; height: 18px; fill: currentColor; }
+    .btn-gemini { color: #a855f7 !important; } .btn-chatgpt { color: #10b981 !important; } .btn-claude { color: #f97316 !important; }
+    .dropdown-note { font-size: 11px; color: var(--text-dim); padding: 12px; text-align: center; background: rgba(0,0,0,0.05); }
+
+    /* Action Toolbar Tooltips */
+    .action-toolbar { display: flex; justify-content: space-around; }
+    .action-item { display: flex; flex-direction: column; align-items: center; cursor: pointer; }
+    .circle-icon { width: 42px; height: 42px; border-radius: 50%; border: 1px solid var(--surface-border); display: flex; justify-content: center; align-items: center; color: var(--text-dim); margin-bottom: 6px; background: var(--surface); transition: all 0.3s ease; }
+    .action-item:hover .circle-icon { background: var(--primary-light); color: var(--primary); border-color: var(--primary); }
+    .action-label { font-size: 11px; color: var(--text-dim); font-weight: 500;}
+
+    /* Sidebar & Settings */
+    .sidebar { position: absolute; top: 0; left: -260px; width: 240px; height: 100%; background: var(--surface); border-right: 1px solid var(--surface-border); transition: 0.3s ease-in-out; z-index: 100; padding-top: 60px; box-shadow: 4px 0 15px rgba(0,0,0,0.1); }
+    .sidebar.open { left: 0; }
+    .sidebar ul { list-style: none; padding: 0; margin: 0; }
+    .sidebar li { padding: 12px 20px; margin: 8px 15px; border-radius: 25px; cursor: pointer; font-weight: 600; font-size: 14px; color: var(--text-main); background: var(--app-bg); transition: 0.2s; text-align: center; border: 1px solid transparent; }
+    .sidebar li:hover { background: var(--primary-light); color: var(--primary); border-color: var(--primary); }
+    .close-btn { position: absolute; top: 15px; right: 15px; font-size: 22px; cursor: pointer; border: none; background: none; color: var(--text-dim); }
+
+    .settings-modal-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); z-index: 200; display: none; align-items: center; justify-content: center; }
+    .settings-modal-overlay.show { display: flex; }
+    .settings-modal { background: var(--surface); border: 1px solid var(--surface-border); border-radius: 20px; padding: 25px; width: 85%; max-width: 380px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); max-height: 90vh; overflow-y: auto; color: var(--text-main); }
+    .settings-modal h3 { margin-top: 0; color: var(--text-main); font-size: 18px; margin-bottom: 20px;}
+    .settings-group label { display: block; font-size: 13px; font-weight: 600; color: var(--text-dim); margin-bottom: 6px; }
+    .settings-group input, .settings-group select { width: 100%; margin-bottom:15px; padding: 10px 12px; border: 1px solid var(--surface-border); border-radius: 10px; font-size: 14px; background: var(--app-bg); color: var(--text-main); outline: none; transition: 0.3s; }
+    .settings-group input:focus, .settings-group select:focus { border-color: var(--primary); }
+    .settings-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 15px; }
+    .settings-btn { padding: 9px 16px; border-radius: 8px; font-weight: 600; border: none; cursor: pointer; font-size: 14px; transition: 0.2s;}
+    .settings-btn-cancel { background: var(--app-bg); color: var(--text-main); border: 1px solid var(--surface-border); }
+    .settings-btn-save { background: var(--primary); color: white; }
+
+    /* Notebook View Adjustments */
+    .notebook-container { padding: 20px; display: flex; flex-direction: column; gap: 15px; height: 100%; box-sizing: border-box; }
+    .notebook-input-wrapper { background: var(--surface); border-radius: 20px; box-shadow: 0 5px 15px rgba(0,0,0,0.05); padding: 20px; display: flex; flex-direction: column; flex-grow: 1; border: 1px solid var(--surface-border); }
+    .notebook-textarea { flex-grow: 1; border: none; outline: none; font-size: 15px; font-family: inherit; resize: none; line-height: 1.5; color: var(--text-main); margin-bottom: 15px; background: transparent;}
+    .notebook-textarea::placeholder { color: var(--text-dim); }
+    .notebook-toolbar { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--surface-border); padding-top: 15px; }
+    .generate-btn { background: var(--primary); color: white; border: none; padding: 12px 24px; border-radius: 12px; font-weight: 600; cursor: pointer; transition: 0.3s; display: flex; align-items: center; gap: 8px;}
+    
+    .generating-overlay { position: absolute; top:0; left:0; width:100%; height:100%; background: var(--surface); opacity:0.9; z-index: 50; display: none; flex-direction: column; justify-content: center; align-items: center; border-radius: 20px; }
+    .generating-overlay.show { display: flex; }
+    .loader-spinner { width: 40px; height: 40px; border: 4px solid var(--surface-border); border-top: 4px solid var(--primary); border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 15px; }
+    
+    .slides-viewer { display: none; flex-direction: column; padding: 0; background: var(--outer-bg); min-height: 100%; overflow-y:auto; }
+    .slides-viewer-header { display: flex; justify-content: space-between; align-items: center; margin:0; }
+    .back-btn { background: var(--surface); padding: 8px 16px; border-radius: 8px; font-weight: 600; cursor: pointer; border: 1px solid var(--surface-border); color: var(--text-main); }
+    .download-pdf-btn { background: #d9534f; color: white; padding: 8px 16px; border-radius: 8px; font-weight: 600; cursor: pointer; border: none; display: flex; align-items: center; gap: 5px;}
+    
+    #pdfRootContainer { display: flex; flex-direction: column; gap: 20px; align-items: center; width: 100%; padding-bottom: 50px; }
+    .slide-a4-page { width: 210mm; height: 297mm; background: linear-gradient(135deg, white 0%, var(--primary-light) 100%); box-sizing: border-box; padding: 30mm 20mm; position: relative; border-radius: 10px; page-break-after: always; display: flex; flex-direction: column; overflow: hidden; color:#111; }
+    .page-wrapper-scale { transform-origin: top center; transform: scale(0.4); margin-bottom: -150mm; transition: transform 0.3s; box-shadow: 0 10px 30px rgba(0,0,0,0.2); border-radius: 10px;}
+    @media (max-width: 600px) { .page-wrapper-scale { transform: scale(0.25); margin-bottom: -200mm; } }
+    .slide-page-title { font-size: 38px; font-weight: 800; color: #333; margin-bottom: 30px; text-align: center; }
+    .slide-page-image { width: 100%; height: 350px; object-fit: cover; border-radius: 15px; margin-bottom: 30px; border: 4px solid white; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+    .slide-page-content { font-size: 22px; line-height: 1.6; color: #444; text-align: justify; }
+    .slide-page-footer { position: absolute; bottom: 15mm; right: 20mm; font-size: 16px; color: var(--primary); font-weight: bold; }
+    .hidden-input { display: none; }
+</style>
+</head>
+<body class="theme-gemini">
+    
+<!-- Inject SVGs globally for easy reuse -->
+<svg style="display:none;">
+    <symbol id="icon-gemini" viewBox="0 0 24 24">
+        <path d="M12 2l2.4 7.6L22 12l-7.6 2.4L12 22l-2.4-7.6L2 12l7.6-2.4L12 2z"></path>
+    </symbol>
+    <symbol id="icon-groq" viewBox="0 0 24 24">
+        <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path>
+    </symbol>
+    <symbol id="icon-claude" viewBox="0 0 24 24">
+        <path d="M12 2L2 7l10 5 10-5-10-5zm0 10l-10-5v10l10 5 10-5V7l-10 5z"></path>
+    </symbol>
+</svg>
+
+<div class="phone-container">
+    
+    <div class="sidebar" id="sidebarMenu">
+        <button class="close-btn" onclick="toggleSidebar()">✖</button>
+        <ul>
+            <li onclick="switchView('chat'); toggleSidebar()">💬 Chat AI</li>
+            <li onclick="switchView('notebook'); toggleSidebar()">📚 Notebook LM Mode</li>
+            <li onclick="alert('Recent features coming soon!')">⏳ Recent</li>
+            <li onclick="alert('All history coming soon!')">📂 All conversations</li>
+        </ul>
+    </div>
+
+    <!-- Settings Overlay -->
+    <div class="settings-modal-overlay" id="settingsOverlay">
+        <div class="settings-modal">
+            <h3>⚙️ App Settings</h3>
+            
+            <div class="settings-group">
+                <label>Preferred Language</label>
+                <select id="userLanguage">
+                    <option value="Bengali">Bengali (বাংলা)</option>
+                    <option value="English">English</option>
+                    <option value="Hindi">Hindi (हिंदी)</option>
+                </select>
+            </div>
+
+            <hr style="border:0; border-top: 1px solid var(--surface-border); margin: 20px 0;">
+
+            <div class="settings-group">
+                <label>Select AI Provider</label>
+                <select id="apiProvider" onchange="handleProviderChange()">
+                    <option value="Gemini Pro">Gemini Pro</option>
+                    <option value="Groq">Groq (LLaMA3 Base)</option>
+                    <option value="Open Router">Open Router</option>
+                    <option value="Custom">Add Custom API</option>
+                </select>
+            </div>
+            
+            <div id="customApiFields" style="display: none;">
+                <div class="settings-group"><input type="text" id="customUrl" placeholder="Endpoint URL (e.g. api.example.com)"></div>
+                <div class="settings-group"><input type="text" id="customModel" placeholder="Model Name"></div>
+            </div>
+
+            <div class="settings-group"><label>API Key</label><input type="password" id="apiKey" placeholder="Enter your API Key here"></div>
+            
+            <div class="settings-actions">
+                <button class="settings-btn settings-btn-cancel" onclick="closeSettings()">Cancel</button>
+                <button class="settings-btn settings-btn-save" onclick="saveSettings()">Save Configuration</button>
+            </div>
+        </div>
+    </div>
+
+
+    <div class="header">
+        <button class="hamburger-icon" onclick="toggleSidebar()">☰</button>
+        <div class="subject-title" id="topHeaderTitle">Education AI</div>
+        <div class="header-right">
+            <button id="themeToggleBtn" class="theme-toggle" onclick="toggleThemeConfig()">🌙</button>
+            <div class="session-timer" id="timerDisplay">00:00</div>
+            <button class="settings-icon" onclick="openSettings()">⚙️</button>
+        </div>
+    </div>
+
+    <!-- VIEW 1: CHAT AREA -->
+    <div id="viewChat" class="app-view active">
+        <div class="chat-area" id="chatArea">
+            <div class="message msg-ai">
+                <span class="ai-badge"><svg><use href="#icon-gemini"></use></svg> System</span>
+                Welcome to Education AI! We've added a Light/Dark switch above 🌙. If you retry a question, use the icons below this message!
+            </div>
+        </div>
+
+        <div class="bottom-section">
+            <div class="model-dropdown" id="aiDropdown">
+                <button class="btn-gemini" onclick="selectModel('Gemini Pro', 'theme-gemini')">
+                    <svg><use href="#icon-gemini"></use></svg> Gemini Pro
+                </button>
+                <button class="btn-chatgpt" onclick="selectModel('Groq', 'theme-chatgpt')">
+                    <svg><use href="#icon-groq"></use></svg> Groq (LLaMA)
+                </button>
+                <button class="btn-claude" onclick="selectModel('Open Router', 'theme-claude')">
+                    <svg><use href="#icon-claude"></use></svg> Open Router
+                </button>
+            </div>
+
+            <div class="input-wrapper">
+                <input type="text" id="chatInput" placeholder="Ask AI...">
+                <button class="ai-select-btn" id="dropdownToggle" onclick="toggleDropdown()">
+                    <span id="activeModelLabel">Gemini Pro</span> ▼
+                </button>
+                <button class="send-btn" id="sendBtn" onclick="sendMessage()">➤</button>
+            </div>
+
+            <input type="file" id="cameraInput" class="hidden-input" accept="image/*" capture="environment">
+            <input type="file" id="docInput" class="hidden-input" accept=".pdf,.doc,.docx,.txt,.xls">
+            <input type="file" id="photoInput" class="hidden-input" accept="image/*">
+            <input type="file" id="audioInput" class="hidden-input" accept="audio/*" capture="microphone">
+
+            <div class="action-toolbar">
+                <div class="action-item" onclick="triggerInput('cameraInput')">
+                    <div class="circle-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg></div>
+                    <span class="action-label">Camera</span>
+                </div>
+                <div class="action-item" onclick="triggerInput('docInput')">
+                    <div class="circle-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg></div>
+                    <span class="action-label">Document</span>
+                </div>
+                <div class="action-item" onclick="triggerInput('photoInput')">
+                    <div class="circle-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg></div>
+                    <span class="action-label">Photo</span>
+                </div>
+                <div class="action-item" onclick="triggerInput('audioInput')">
+                    <div class="circle-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg></div>
+                    <span class="action-label">Audio</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- VIEW 2: NOTEBOOK LM -->
+    <div id="viewNotebookInput" class="app-view">
+        <div class="notebook-container">
+            <h2 style="margin:0; color:var(--text-main);">Notebook LM</h2>
+            <p style="margin:0; color:var(--text-dim); font-size:14px;">Paste raw notes for automated slide analysis & visuals.</p>
+            
+            <div class="notebook-input-wrapper">
+                <textarea id="notebookInputText" class="notebook-textarea" placeholder="Paste chapters or paragraphs..."></textarea>
+                <div class="generating-overlay" id="docLoader">
+                    <div class="loader-spinner"></div>
+                    <div style="font-weight: bold; color: var(--primary);">Rendering...</div>
+                </div>
+                <div class="notebook-toolbar">
+                    <div class="toolbar-icons">
+                        <div class="action-item" onclick="triggerInput('docInput')">
+                            <div class="circle-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg></div>
+                        </div>
+                    </div>
+                    <button class="generate-btn" onclick="generateNotebookSlides()">✨ Generate Slides</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- VIEW 3: NOTEBOOK LM EXPORT -->
+    <div id="viewNotebookExport" class="app-view slides-viewer">
+        <div style="background: var(--surface); padding: 15px 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); z-index: 10; border-bottom: 1px solid var(--surface-border);">
+            <div class="slides-viewer-header">
+                <button class="back-btn" onclick="switchView('notebook')">← Back</button>
+                <button class="download-pdf-btn" onclick="exportPDF()">Download PDF</button>
+            </div>
+        </div>
+        <div style="flex-grow: 1; overflow-y: auto; padding: 40px 20px;">
+            <div id="pdfRootContainer"></div>
+        </div>
+    </div>
+
+</div>
+
+<div id="hiddenPdfEngine" style="position: absolute; left: -9999px; top: 0; opacity: 0; background: white;"></div>
+
+<script>
+    // Adjust Icon for toggle on load
+    document.addEventListener("DOMContentLoaded", () => {
+        if(document.documentElement.getAttribute('data-theme') === 'dark') {
+            document.getElementById('themeToggleBtn').innerText = '☀️';
+        }
+    });
+
+    // Theme logic
+    function toggleThemeConfig() {
+        const docSettings = document.documentElement;
+        if(docSettings.getAttribute('data-theme') === 'dark') {
+            docSettings.removeAttribute('data-theme');
+            localStorage.setItem('eduAiTheme', 'light');
+            document.getElementById('themeToggleBtn').innerText = '🌙';
+        } else {
+            docSettings.setAttribute('data-theme', 'dark');
+            localStorage.setItem('eduAiTheme', 'dark');
+            document.getElementById('themeToggleBtn').innerText = '☀️';
+        }
+    }
+
+    // --- Application State ---
+    let apiState = { provider: 'Gemini Pro', language: 'Bengali', keys: { 'Gemini Pro': '', 'Groq': '', 'Open Router': '', 'Custom': '' }, customUrl: '', customModel: '' };
+    let currentActiveModel = 'Gemini Pro';
+    let isWaitingForResponse = false;
+    let lastUserMessage = ""; 
+
+    const loadSettings = () => {
+        const saved = localStorage.getItem('eduAiSettings');
+        if (saved) { try { apiState = { ...apiState, ...JSON.parse(saved) }; } catch(e) {} }
+    };
+    loadSettings();
+
+    function getContextPrefix() { return `[System Directive: Ensure all output perfectly matches the language: ${apiState.language}.]\n\n`; }
+
+    function switchView(viewName) {
+        document.querySelectorAll('.app-view').forEach(el => el.classList.remove('active'));
+        if(viewName === 'chat') { document.getElementById('topHeaderTitle').innerText = 'Education AI Chat'; document.getElementById('viewChat').classList.add('active'); }
+        else if(viewName === 'notebook') { document.getElementById('topHeaderTitle').innerText = 'Notebook LM'; document.getElementById('viewNotebookInput').classList.add('active'); }
+        else if(viewName === 'notebookExport') { document.getElementById('topHeaderTitle').innerText = 'Presentation Viewer'; document.getElementById('viewNotebookExport').classList.add('active'); }
+    }
+    
+    const openSettings = () => {
+        document.getElementById('apiProvider').value = apiState.provider;
+        document.getElementById('userLanguage').value = apiState.language;
+        handleProviderChange(); document.getElementById('settingsOverlay').classList.add('show');
+    };
+    const closeSettings = () => { document.getElementById('settingsOverlay').classList.remove('show'); };
+    const handleProviderChange = () => {
+        const p = document.getElementById('apiProvider').value;
+        document.getElementById('apiKey').value = apiState.keys[p] || '';
+        document.getElementById('customApiFields').style.display = (p === 'Custom') ? 'block' : 'none';
+    };
+    const saveSettings = () => {
+        const p = document.getElementById('apiProvider').value;
+        apiState.provider = p; apiState.language = document.getElementById('userLanguage').value;
+        apiState.keys[p] = document.getElementById('apiKey').value.trim();
+        if (p === 'Custom') { apiState.customUrl = document.getElementById('customUrl').value.trim(); apiState.customModel = document.getElementById('customModel').value.trim(); }
+        localStorage.setItem('eduAiSettings', JSON.stringify(apiState)); closeSettings();
+        if(p === 'Gemini Pro') selectModel('Gemini Pro', 'theme-gemini');
+        if(p === 'Groq') selectModel('Groq', 'theme-chatgpt');
+        if(p === 'Open Router') selectModel('Open Router', 'theme-claude');
+    };
+
+    window.addEventListener('DOMContentLoaded', () => {
+        if(apiState.provider === 'Gemini Pro') selectModel('Gemini Pro', 'theme-gemini');
+        else if(apiState.provider === 'Groq') selectModel('Groq', 'theme-chatgpt');
+        else if(apiState.provider === 'Open Router') selectModel('Open Router', 'theme-claude');
+    });
+
+    async function fetchAIResponse(targetModel, text) {
+        const fullPrompt = getContextPrefix() + text;
+        const p = targetModel || apiState.provider; 
+        const apiKey = apiState.keys[p];
+        if(!apiKey) throw new Error("API Key missing for " + p);
+
+        if(p === 'Gemini Pro') {
+            const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${apiKey}`, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ contents: [{ parts: [{ text: fullPrompt }] }] })
+            });
+            const data = await res.json(); if(data.error) throw new Error(data.error.message);
+            return data.candidates[0].content.parts[0].text;
+        } else if(p === 'Groq') {
+            const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+                method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+                body: JSON.stringify({ model: "llama3-8b-8192", messages: [{ role: "user", content: fullPrompt }] })
+            });
+            const data = await res.json(); if(data.error) throw new Error(data.error.message); return data.choices[0].message.content;
+        } else if(p === 'Open Router') {
+            const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+                method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+                body: JSON.stringify({ model: "meta-llama/llama-3-8b-instruct:free", messages: [{ role: "user", content: fullPrompt }] })
+            });
+            const data = await res.json(); if(data.error) throw new Error(data.error.message); return data.choices[0].message.content;
+        }
+    }
+
+
+    /* NOTEBOOK LM LOGIC */
+    async function generateNotebookSlides() {
+        const text = document.getElementById('notebookInputText').value.trim();
+        if(!text) return alert("Please paste some notes first!");
+        document.getElementById('docLoader').classList.add('show');
+        const nblmPrompt = `Analyze these notes. Output exact markdown array format, use language ${apiState.language}.\nFormat:\nTitle: ...\nImagePrompt: [6-word english visual description]\nContent: ...\n###SLIDE###\nNotes: ${text}`;
+        try {
+            const rawResponse = await fetchAIResponse(apiState.provider, nblmPrompt);
+            parseAndRenderSlides(rawResponse); switchView('notebookExport');
+        } catch (err) { alert("Error generating slides: " + err.message); } 
+        finally { document.getElementById('docLoader').classList.remove('show'); }
+    }
+    function parseAndRenderSlides(rawText) {
+        const slideBlocks = rawText.split('###SLIDE###').filter(s => s.trim() !== '');
+        let rootHtml = '', pdffriendlyHtml = '';
+        slideBlocks.forEach((block, idx) => {
+            let t = block.match(/Title:\s*(.*)/i), i = block.match(/ImagePrompt:\s*(.*)/i), c = block.match(/Content:\s*([\s\S]*)/i);
+            let title = t ? t[1].trim() : `Slide ${idx+1}`, imgPrompt = i ? i[1].trim() : 'educational concept', content = c ? c[1].trim().replace(/\*\*(.*?)\*\*/g,'<b>$1</b>').replace(/\n/g,'<br>') : block;
+            const imgUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(imgPrompt + ' hyperrealistic digital art')}?width=1200&height=600&nologo=true`;
+            const pageHtml = `<div class="slide-a4-page"><div class="slide-page-title">${title}</div><img src="${imgUrl}" class="slide-page-image" crossorigin="anonymous"><div class="slide-page-content">${content}</div><div class="slide-page-footer">Notebook LM</div></div>`;
+            rootHtml += `<div class="page-wrapper-scale">${pageHtml}</div>`; pdffriendlyHtml += pageHtml;
+        });
+        document.getElementById('pdfRootContainer').innerHTML = rootHtml; document.getElementById('hiddenPdfEngine').innerHTML = pdffriendlyHtml;
+    }
+    function exportPDF() {
+        const btn = document.querySelector('.download-pdf-btn'); const ogText = btn.innerHTML; btn.innerText = "⏳ Generating...";
+        html2pdf().set({ margin: 0, filename: 'Education_AI.pdf', image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } })
+        .from(document.getElementById('hiddenPdfEngine')).save().then(() => btn.innerHTML = ogText).catch(e => { alert(e.message); btn.innerHTML = ogText; });
+    }
+
+    /* Basic Events */
+    setInterval(() => {
+        let min = Math.floor(++seconds / 60); let sec = seconds % 60;
+        document.getElementById('timerDisplay').innerText = (min<10?'0'+min:min) + ':' + (sec<10?'0'+sec:sec);
+    }, 1000); let seconds = 0;
+    function triggerInput(id) { document.getElementById(id).click(); }
+    function toggleSidebar() { document.getElementById('sidebarMenu').classList.toggle('open'); }
+    function toggleDropdown() { document.getElementById('aiDropdown').classList.toggle('show'); }
+
+    
+    /* Model Selection and Chat functionality */
+    function selectModel(modelName, themeClass) {
+        currentActiveModel = modelName; document.body.className = themeClass;
+        document.getElementById('activeModelLabel').innerText = modelName;
+        document.getElementById('aiDropdown').classList.remove('show');
+    }
+
+    const chatInput = document.getElementById('chatInput');
+    chatInput.addEventListener('input', function() {
+        document.getElementById('sendBtn').style.display = this.value.trim().length > 0 ? 'flex' : 'none';
+        document.getElementById('dropdownToggle').style.display = this.value.trim().length > 0 ? 'none' : 'flex';
+    });
+    chatInput.addEventListener('keypress', function (e) { if (e.key === 'Enter') sendMessage(); });
+    
+    document.querySelectorAll('.hidden-input').forEach(i => i.addEventListener('change', function(e) {
+        if(!this.files.length) return; const f = this.files[0];
+        if (document.getElementById('viewNotebookInput').classList.contains('active')) {
+            if(f.type === "text/plain") { const r = new FileReader(); r.onload = (ev) => { document.getElementById('notebookInputText').value += "\n" + ev.target.result; }; r.readAsText(f); }
+        } else {
+            const chatArea = document.getElementById('chatArea'); const userDiv = document.createElement('div'); userDiv.className = 'message msg-user'; userDiv.innerHTML = `📎 <strong>Attached:</strong> ${f.name}`; chatArea.appendChild(userDiv); chatArea.scrollTop = chatArea.scrollHeight;
+        } this.value = '';
+    }));
+
+    function getIconForModel(mName) {
+        if(mName.includes('Gemini')) return '#icon-gemini';
+        if(mName.includes('Groq')) return '#icon-groq';
+        if(mName.includes('Open Router')) return '#icon-claude';
+        return '#icon-gemini';
+    }
+
+    // Handles user clicking a new model right underneath a message to resend!
+    window.retryWithModel = function(modelName) {
+        if(isWaitingForResponse || !lastUserMessage) return;
+        
+        let targetTheme = 'theme-gemini';
+        if(modelName === 'Groq') targetTheme = 'theme-chatgpt';
+        if(modelName === 'Open Router') targetTheme = 'theme-claude';
+        selectModel(modelName, targetTheme);
+        triggerAiRequest(lastUserMessage, modelName);
+    }
+
+    async function sendMessage() {
+        if(isWaitingForResponse) return;
+        const text = chatInput.value.trim(); if (!text) return;
+
+        lastUserMessage = text;
+
+        const chatArea = document.getElementById('chatArea');
+        const userDiv = document.createElement('div'); userDiv.className = 'message msg-user'; userDiv.innerText = text;
+        chatArea.appendChild(userDiv);
+        
+        chatInput.value = ''; document.getElementById('sendBtn').style.display = 'none'; document.getElementById('dropdownToggle').style.display = 'flex';
+        chatArea.scrollTop = chatArea.scrollHeight;  
+        
+        triggerAiRequest(text, currentActiveModel);
+    }
+
+    async function triggerAiRequest(text, overrideModel) {
+        isWaitingForResponse = true;
+        const chatArea = document.getElementById('chatArea');
+
+        const aiDiv = document.createElement('div'); aiDiv.className = 'message msg-ai';
+        const badge = document.createElement('span'); badge.className = 'ai-badge'; 
+        badge.innerHTML = `<svg><use href="${getIconForModel(overrideModel)}"></use></svg> ${overrideModel}`;
+        aiDiv.appendChild(badge);
+        
+        const typing = document.createElement('div'); typing.className = 'typing-indicator'; typing.innerHTML = '<span></span><span></span><span></span>';
+        aiDiv.appendChild(typing);
+        chatArea.appendChild(aiDiv); chatArea.scrollTop = chatArea.scrollHeight;
+
+        try {
+            const replyTxt = await fetchAIResponse(overrideModel, text);
+            typing.remove();
+            aiDiv.appendChild(document.createTextNode(replyTxt));
+
+            const retryDiv = document.createElement('div');
+            retryDiv.className = 'retry-bar';
+            retryDiv.innerHTML = `
+                <span class="retry-label">Re-ask with:</span>
+                <div class="retry-btn" title="Ask Gemini" onclick="retryWithModel('Gemini Pro')"><svg><use href="#icon-gemini"></use></svg></div>
+                <div class="retry-btn" title="Ask Groq" onclick="retryWithModel('Groq')"><svg><use href="#icon-groq"></use></svg></div>
+                <div class="retry-btn" title="Ask Open Router" onclick="retryWithModel('Open Router')"><svg><use href="#icon-claude"></use></svg></div>
+            `;
+            const wrapper = document.createElement('div');
+            wrapper.style.display = "flex"; wrapper.style.flexDirection = "column"; wrapper.style.alignItems = "flex-start";
+            wrapper.appendChild(aiDiv);
+            wrapper.appendChild(retryDiv);
+            chatArea.replaceChild(wrapper, aiDiv);
+        } catch (err) {
+            typing.remove(); aiDiv.style.borderColor = "#f87171";
+            aiDiv.appendChild(document.createTextNode("⚠️ Error: " + err.message));
+        }
+        chatArea.scrollTop = chatArea.scrollHeight; isWaitingForResponse = false;
+    }
+
+    window.onclick = function(e) { if (!e.target.closest('.input-wrapper')) { document.querySelectorAll(".model-dropdown").forEach(d=>d.classList.remove('show')); } }
+</script>
+</body>
+</html>
