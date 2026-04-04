@@ -102,9 +102,14 @@
     .settings-icon:hover { transform: rotate(45deg); }
 
     /* --- View Management --- */
-    .app-view { display: none; flex-direction: column; flex-grow: 1; overflow-y: auto; position: relative; }
-    .app-view.active { display: flex; animation: fadeIn 0.3s ease-in-out; }
-
+    ..app-view { 
+    display: none; 
+    flex-direction: column; 
+    flex-grow: 1; 
+    overflow: hidden; /* এখানে overflow-y: auto; পরিবর্তন করে hidden করা হয়েছে */
+    position: relative; 
+    }
+    
     /* --- Chat Body Area --- */
     .chat-area { padding: 20px; flex-grow: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 20px; scroll-behavior: smooth; }
     .message { max-width: 85%; padding: 14px 18px; border-radius: 20px; font-size: 15px; line-height: 1.5; position: relative; white-space: pre-wrap; word-wrap: break-word;}
